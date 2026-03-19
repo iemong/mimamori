@@ -1,22 +1,33 @@
 import { readdir, readFile, writeFile, mkdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
+import { findProjectByChannel, getProjectKnowledgeDir } from "./project";
 
 export const KNOWLEDGE_DIR =
   process.env.AIPM_KNOWLEDGE_DIR ||
   resolve(import.meta.dir, "..", "knowledge");
 
+async function resolveKnowledgeDir(channelId: string): Promise<string> {
+  const project = await findProjectByChannel(channelId);
+  if (project) {
+    return getProjectKnowledgeDir(project.slug);
+  }
+  return join(KNOWLEDGE_DIR, channelId);
+}
+
 export async function saveDecision(
+  channelId: string,
   question: string,
   answer: string,
   context?: string,
   tags?: string[],
 ): Promise<string> {
-  await mkdir(KNOWLEDGE_DIR, { recursive: true });
+  const channelDir = await resolveKnowledgeDir(channelId);
+  await mkdir(channelDir, { recursive: true });
 
   const id = Date.now().toString(36);
   const date = new Date().toISOString().split("T")[0];
   const filename = `${date}-${id}.md`;
-  const filepath = join(KNOWLEDGE_DIR, filename);
+  const filepath = join(channelDir, filename);
 
   const tagLine = (tags || []).map((t) => `"${t}"`).join(", ");
   const content = [
@@ -40,9 +51,10 @@ export async function saveDecision(
   return filepath;
 }
 
-export async function listDecisions(): Promise<string[]> {
+export async function listDecisions(channelId: string): Promise<string[]> {
   try {
-    const files = await readdir(KNOWLEDGE_DIR);
+    const channelDir = await resolveKnowledgeDir(channelId);
+    const files = await readdir(channelDir);
     return files
       .filter((f) => f.endsWith(".md"))
       .sort()
@@ -52,6 +64,10 @@ export async function listDecisions(): Promise<string[]> {
   }
 }
 
-export async function readDecision(filename: string): Promise<string> {
-  return readFile(join(KNOWLEDGE_DIR, filename), "utf-8");
+export async function readDecision(
+  channelId: string,
+  filename: string,
+): Promise<string> {
+  const channelDir = await resolveKnowledgeDir(channelId);
+  return readFile(join(channelDir, filename), "utf-8");
 }

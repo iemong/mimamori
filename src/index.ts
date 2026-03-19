@@ -16,6 +16,7 @@ import {
   isWatchedChannel,
 } from "./rules";
 import { shouldProcess } from "./guard";
+import { findProjectByChannel, type Project } from "./project";
 
 const app = new App({
   token: config.slackBotToken,
@@ -23,6 +24,27 @@ const app = new App({
   signingSecret: config.slackSigningSecret,
   socketMode: true,
 });
+
+// --------------------------------------------------
+// プロジェクトコンテキスト
+// --------------------------------------------------
+
+function buildProjectContext(project: Project): string {
+  const lines = [
+    `[プロジェクト] ${project.config.name} (${project.slug})`,
+  ];
+  if (project.config.channelName)
+    lines.push(`  チャンネル: ${project.config.channelName}`);
+  if (project.config.description)
+    lines.push(`  説明: ${project.config.description}`);
+  if (project.config.github)
+    lines.push(
+      `  GitHub: ${project.config.github.owner}/${project.config.github.repo}`,
+    );
+  if (project.config.notion)
+    lines.push(`  Notion DB: ${project.config.notion.databaseId}`);
+  return lines.join("\n");
+}
 
 // --------------------------------------------------
 // メンション → 常に処理（ガードなし）
@@ -35,10 +57,12 @@ app.event("app_mention", async ({ event, say, client }) => {
   const userName =
     userInfo.user?.real_name || userInfo.user?.name || "unknown";
 
-  const prompt = [
-    `[Slack] ${userName} からのメンション:`,
-    event.text,
-  ].join("\n");
+  const project = await findProjectByChannel(event.channel);
+  const promptParts = [];
+  if (project) promptParts.push(buildProjectContext(project));
+  promptParts.push(`[Slack] ${userName} からのメンション:`);
+  promptParts.push(event.text);
+  const prompt = promptParts.join("\n");
 
   const result = await askAgent(prompt, contextKey);
   await handleAgentResult(result, contextKey, event.channel, threadTs, say);
@@ -63,12 +87,16 @@ app.event("reaction_added", async ({ event, client }) => {
   if (!message) return;
 
   const contextKey = `reaction-${channelId}-${event.item.ts}`;
-  const prompt = [
+  const project = await findProjectByChannel(channelId);
+  const promptParts = [];
+  if (project) promptParts.push(buildProjectContext(project));
+  promptParts.push(
     `[Slack] メッセージに :${event.reaction}: リアクションが付きました。`,
     `メッセージ: ${message}`,
     "",
     `アクション: ${rule.prompt}`,
-  ].join("\n");
+  );
+  const prompt = promptParts.join("\n");
 
   const agentResult = await askAgent(prompt, contextKey);
   await handleAgentResultDirect(
@@ -105,14 +133,18 @@ app.message(async ({ message, say, client }) => {
   const userName =
     userInfo?.user?.real_name || userInfo?.user?.name || "unknown";
 
-  const prompt = [
+  const project = await findProjectByChannel(message.channel);
+  const promptParts = [];
+  if (project) promptParts.push(buildProjectContext(project));
+  promptParts.push(
     `[Slack] ${userName} の投稿:`,
     message.text,
     "",
     `アクション: ${rule.prompt}`,
     "",
     "アクションが不要な場合は NO_ACTION を返してください。",
-  ].join("\n");
+  );
+  const prompt = promptParts.join("\n");
 
   const result = await askAgent(prompt, contextKey);
   await handleAgentResult(
@@ -225,7 +257,7 @@ export async function handleAgentResult(
 
     const answer = await waitForHitl(requestId);
     const followUp = await askAgent(`ユーザーの回答: ${answer}`, contextKey);
-    await saveDecision(hitl.question, answer, hitl.context);
+    await saveDecision(channel, hitl.question, answer, hitl.context);
 
     const { cleanText: followUpText } = parseHitlFromResult(followUp);
     if (followUpText && followUpText !== "NO_ACTION") {
@@ -263,7 +295,7 @@ export async function handleAgentResultDirect(
 
     const answer = await waitForHitl(requestId);
     const followUp = await askAgent(`ユーザーの回答: ${answer}`, contextKey);
-    await saveDecision(hitl.question, answer, hitl.context);
+    await saveDecision(channel, hitl.question, answer, hitl.context);
 
     const { cleanText: followUpText } = parseHitlFromResult(followUp);
     if (followUpText && followUpText !== "NO_ACTION") {

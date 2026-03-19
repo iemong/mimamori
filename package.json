@@ -5,7 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "bun run src/index.ts",
-    "setup": "bun run scripts/setup.ts"
+    "setup": "bun run scripts/setup.ts",
+    "project:create": "bun run scripts/project.ts create",
+    "project:list": "bun run scripts/project.ts list",
+    "test:hitl": "bun run scripts/test-hitl.ts"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.1.2",
