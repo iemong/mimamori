@@ -217,7 +217,8 @@ export default rules;
   console.log("  2. gh auth login (未実施の場合)");
   console.log("  3. ntn auth login (未実施の場合)");
   console.log("  4. sentry auth login (未実施の場合)");
-  console.log("  5. bun run dev");
+  console.log("  5. bun run test:hitl  (HITL動作確認)");
+  console.log("  6. bun run dev");
   console.log("");
 
   rl.close();
