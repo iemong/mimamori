@@ -77,14 +77,25 @@ async function main() {
     "控えめ",
   );
 
+  // ---- HITL Channel ----
+  console.log("");
+  console.log("[Bash Guard] HITL承認チャンネル");
+  console.log("  ホワイトリスト外のBashコマンド実行時に承認を求めるチャンネルIDです。");
+  console.log("  未指定の場合、ホワイトリスト外のコマンドは全て拒否されます。");
+  const hitlChannel = await ask("  チャンネルID (C..., Enterでスキップ): ");
+
   // ---- Write .env ----
-  const envContent = [
+  const envLines = [
     "# Slack",
     `SLACK_BOT_TOKEN=${slackBotToken}`,
     `SLACK_APP_TOKEN=${slackAppToken}`,
     `SLACK_SIGNING_SECRET=${slackSigningSecret}`,
-    "",
-  ].join("\n");
+  ];
+  if (hitlChannel) {
+    envLines.push("", "# Bash Guard HITL", `SLACK_HITL_CHANNEL=${hitlChannel}`);
+  }
+  envLines.push("");
+  const envContent = envLines.join("\n");
 
   await writeFile(resolve(ROOT, ".env"), envContent);
   console.log("  -> .env を作成しました");
@@ -95,6 +106,10 @@ async function main() {
       notion: {
         command: "ntn",
         args: ["mcp"],
+      },
+      aipm_bash: {
+        command: "bun",
+        args: ["run", "mcp-servers/bash-guard/index.ts"],
       },
     },
   };

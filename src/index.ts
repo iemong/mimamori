@@ -17,6 +17,8 @@ import {
 } from "./rules";
 import { shouldProcess } from "./guard";
 import { findProjectByChannel, type Project } from "./project";
+import { startHitlBridge } from "./hitl-bridge";
+import { loadBashWhitelist } from "./bash-guard";
 
 const app = new App({
   token: config.slackBotToken,
@@ -319,10 +321,24 @@ export async function start() {
     (k) => !k.startsWith("_"),
   ).length;
 
+  await loadBashWhitelist();
+
   await app.start();
+
+  // HITL Bridge for bash-guard MCP
+  const hitlChannel = config.slackHitlChannel;
+  if (hitlChannel) {
+    startHitlBridge(config.hitlBridgePort, app.client, hitlChannel);
+  } else {
+    console.warn(
+      "[hitl-bridge] SLACK_HITL_CHANNEL が未設定です。ホワイトリスト外のBashコマンドは全て拒否されます。",
+    );
+  }
+
   console.log("AIPM is running!");
   console.log(`  Channels configured: ${channelCount}`);
   console.log(`  Guard model: ${rules.guard?.model || "(disabled)"}`);
+  console.log(`  HITL channel: ${hitlChannel || "(disabled)"}`);
 }
 
 if (import.meta.main) {

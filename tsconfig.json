@@ -9,6 +9,6 @@
     "noEmit": true,
     "resolveJsonModule": true
   },
-  "include": ["src/**/*", "scripts/**/*", "projects/**/*", "env.d.ts"],
+  "include": ["src/**/*", "scripts/**/*", "projects/**/*", "mcp-servers/**/*", "env.d.ts"],
   "exclude": ["node_modules"]
 }

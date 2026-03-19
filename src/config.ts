@@ -18,4 +18,10 @@ export const config = {
   get slackSigningSecret() {
     return requireEnv("SLACK_SIGNING_SECRET");
   },
+  get slackHitlChannel() {
+    return process.env.SLACK_HITL_CHANNEL || "";
+  },
+  get hitlBridgePort() {
+    return parseInt(process.env.AIPM_HITL_BRIDGE_PORT || "3456", 10);
+  },
 };
