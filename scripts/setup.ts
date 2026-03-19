@@ -19,7 +19,7 @@ async function main() {
   console.log("");
 
   // ---- Step 1: Slack ----
-  console.log("[Step 1/4] Slack");
+  console.log("[Step 1/5] Slack");
   console.log("  Slack App を Socket Mode で作成し、以下のスコープを付与してください:");
   console.log("  Bot scopes: app_mentions:read, channels:history, channels:read,");
   console.log("              chat:write, reactions:read, users:read");
@@ -31,23 +31,34 @@ async function main() {
 
   // ---- Step 2: Notion ----
   console.log("");
-  console.log("[Step 2/4] Notion");
-  console.log(
-    "  https://www.notion.so/my-integrations で Internal Integration を作成してください。",
-  );
+  console.log("[Step 2/5] Notion");
+  console.log("  Notion CLI を使って MCP サーバーを起動します。");
+  console.log("  未インストールの場合: npm i -g ntn@latest");
+  console.log("  認証: ntn auth login");
   console.log("");
-  const notionApiKey = await ask("  Notion API Key: ");
+  await ask("  上記を完了したら Enter を押してください: ");
 
   // ---- Step 3: GitHub ----
   console.log("");
-  console.log("[Step 3/4] GitHub");
-  const githubToken = await ask(
-    "  GitHub Token (空欄で gh CLI 認証を使用): ",
-  );
+  console.log("[Step 3/5] GitHub");
+  console.log("  GitHub CLI を使って連携します。");
+  console.log("  未インストールの場合: brew install gh");
+  console.log("  認証: gh auth login");
+  console.log("");
+  await ask("  上記を完了したら Enter を押してください: ");
+
+  // ---- Step 3: Sentry ----
+  console.log("");
+  console.log("[Step 4/5] Sentry");
+  console.log("  Sentry CLI を使ってエラー監視と連携します。");
+  console.log("  未インストールの場合: npm install -g sentry");
+  console.log("  認証: sentry auth login");
+  console.log("");
+  await ask("  上記を完了したら Enter を押してください: ");
 
   // ---- Step 4: Persona ----
   console.log("");
-  console.log("[Step 4/4] Persona");
+  console.log("[Step 5/5] Persona");
   const personaName = await ask("  名前 (default: AI PM): ", "AI PM");
   const personaRole = await ask(
     "  役割 (default: パーソナルプロジェクトマネージャー): ",
@@ -73,46 +84,24 @@ async function main() {
     `SLACK_APP_TOKEN=${slackAppToken}`,
     `SLACK_SIGNING_SECRET=${slackSigningSecret}`,
     "",
-    "# Notion",
-    `NOTION_API_KEY=${notionApiKey}`,
-    "",
-    "# GitHub",
-    `GITHUB_TOKEN=${githubToken}`,
-    "",
   ].join("\n");
 
   await writeFile(resolve(ROOT, ".env"), envContent);
   console.log("  -> .env を作成しました");
 
   // ---- Write .mcp.json ----
-  const mcpServers: Record<string, unknown> = {};
-
-  if (notionApiKey) {
-    mcpServers.notion = {
-      command: "bunx",
-      args: ["@notionhq/notion-mcp-server"],
-      env: {
-        OPENAPI_MCP_HEADERS: JSON.stringify({
-          Authorization: `Bearer ${notionApiKey}`,
-          "Notion-Version": "2022-06-28",
-        }),
+  const mcpConfig = {
+    mcpServers: {
+      notion: {
+        command: "ntn",
+        args: ["mcp"],
       },
-    };
-  }
-
-  if (githubToken) {
-    mcpServers.github = {
-      command: "bunx",
-      args: ["@modelcontextprotocol/server-github"],
-      env: {
-        GITHUB_PERSONAL_ACCESS_TOKEN: githubToken,
-      },
-    };
-  }
+    },
+  };
 
   await writeFile(
     resolve(ROOT, ".mcp.json"),
-    JSON.stringify({ mcpServers }, null, 2) + "\n",
+    JSON.stringify(mcpConfig, null, 2) + "\n",
   );
   console.log("  -> .mcp.json を作成しました");
 
@@ -225,7 +214,10 @@ export default rules;
   console.log("");
   console.log("  次のステップ:");
   console.log("  1. rules.ts にチャンネルルールを追加");
-  console.log("  2. bun run dev");
+  console.log("  2. gh auth login (未実施の場合)");
+  console.log("  3. ntn auth login (未実施の場合)");
+  console.log("  4. sentry auth login (未実施の場合)");
+  console.log("  5. bun run dev");
   console.log("");
 
   rl.close();
