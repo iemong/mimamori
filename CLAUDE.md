@@ -59,6 +59,7 @@ src/
 ├── bash-guard.ts     # Bash ホワイトリスト管理
 ├── guard.ts          # メッセージガード（LLM判定）
 ├── guard-log.ts      # guard判定ログ（プロジェクトスコープ、JSONL）
+├── activity.ts       # 活動記録（調査ログ・進捗・成果）
 ├── session.ts        # セッション永続化（ファイルベース）
 ├── __tests__/        # テスト
 scripts/
@@ -67,7 +68,9 @@ scripts/
 ├── test-hitl.ts      # HITL動作確認スクリプト
 mcp-servers/
 └── bash-guard/       # Bash Guard MCPサーバー（HITL連動）
-projects/             # プロジェクト設定 + knowledge + guard-logs
+projects/             # プロジェクト設定 + knowledge + activity + guard-logs
+templates/
+└── activity.md       # 活動記録テンプレート
 sessions/             # セッション永続化（.gitignore済み）
 rules.ts              # チャンネルルール定義（ユーザー編集）
 bash-whitelist.ts     # Bash ホワイトリスト定義（ユーザー編集）
@@ -148,6 +151,21 @@ tags: ["tag1", "tag2"]
 ## Reasoning
 判断の理由
 ```
+
+## 活動記録
+
+調査・分析などの作業は、活動記録（activity）としてプロジェクト配下に保存してください。
+`templates/activity.md` のテンプレートに従い、`projects/{slug}/activity/` に1案件1ファイルで記録します。
+
+各ファイルは3つのセクションで構成されます:
+
+- **事実ログ**: 何が起きたか、何を観察したか（タイムスタンプ付き）
+- **進捗**: チェックリスト形式のTODO
+- **成果**: 何を生み出したか（原因特定、PR作成など）
+
+ステータス: `investigating`（調査中）→ `resolved`（完了）/ `stale`（放置）
+
+セッションが切れても、次にスレッドで聞かれたら該当する活動記録を読んで続きから対応できます。
 
 ## セキュリティ: Bash Guard
 
