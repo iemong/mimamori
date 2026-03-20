@@ -30,6 +30,18 @@ const rules = {
     //     },
     //   },
     // },
+
+    C03HG5YKJTB: {
+      name: "#times_iemong",
+      on_message: {
+        guard: true,
+        prompt:
+          "投稿を分析し、必要に応じてNotionにタスク登録してください。",
+      },
+      on_reaction: {
+        memo: { prompt: "Notionにタスクとして登録してください。" },
+      },
+    },
   },
 } as const satisfies Rules;
 

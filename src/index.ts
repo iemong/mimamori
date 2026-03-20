@@ -67,7 +67,7 @@ app.event("app_mention", async ({ event, say, client }) => {
   const prompt = promptParts.join("\n");
 
   const result = await askAgent(prompt, contextKey);
-  await handleAgentResult(result, contextKey, event.channel, threadTs, say);
+  await handleAgentResult(result, contextKey, event.channel, threadTs, say, client);
 });
 
 // --------------------------------------------------
@@ -155,6 +155,7 @@ app.message(async ({ message, say, client }) => {
     message.channel,
     message.ts,
     say,
+    client,
   );
 });
 
@@ -245,6 +246,7 @@ export async function handleAgentResult(
     thread_ts: string;
     blocks?: unknown[];
   }) => Promise<unknown>,
+  client: { chat: { postMessage: (args: Record<string, unknown>) => Promise<unknown> } },
 ) {
   const { hitl, cleanText } = parseHitlFromResult(result);
 
@@ -255,7 +257,16 @@ export async function handleAgentResult(
   if (hitl) {
     const requestId = `${channel}-${Date.now().toString(36)}`;
     const blocks = buildHitlBlocks(requestId, hitl);
-    await say({ blocks, text: hitl.question, thread_ts: threadTs });
+    const hitlChannel = config.slackHitlChannel;
+    if (hitlChannel) {
+      await client.chat.postMessage({
+        channel: hitlChannel,
+        blocks,
+        text: `[${channel}] ${hitl.question}`,
+      });
+    } else {
+      await say({ blocks, text: hitl.question, thread_ts: threadTs });
+    }
 
     const answer = await waitForHitl(requestId);
     const followUp = await askAgent(`ユーザーの回答: ${answer}`, contextKey);
@@ -288,11 +299,12 @@ export async function handleAgentResultDirect(
   if (hitl) {
     const requestId = `${channel}-${Date.now().toString(36)}`;
     const blocks = buildHitlBlocks(requestId, hitl);
+    const hitlChannel = config.slackHitlChannel;
     await client.chat.postMessage({
-      channel,
+      channel: hitlChannel || channel,
       blocks,
-      text: hitl.question,
-      thread_ts: threadTs,
+      text: hitlChannel ? `[${channel}] ${hitl.question}` : hitl.question,
+      ...(hitlChannel ? {} : { thread_ts: threadTs }),
     });
 
     const answer = await waitForHitl(requestId);

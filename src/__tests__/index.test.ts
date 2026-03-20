@@ -318,12 +318,15 @@ describe("start", () => {
 });
 
 describe("handleAgentResult with HITL", () => {
-  test("mentionでHITLレスポンスが返った場合ブロック送信→回答後フォローアップ", async () => {
+  test("mentionでHITLレスポンスが返った場合DMにブロック送信→回答後フォローアップ", async () => {
     const { resolvePendingHitl } = await import("../hitl");
     const handler = eventHandlers.get("app_mention")!;
 
-    // say が blocks を受け取ったら requestId を抽出して HITL を解決する
-    const hitlSay = mock(async (args: any) => {
+    const hitlSay = mock(async () => {});
+
+    // client.chat.postMessage が blocks を受け取ったら requestId を抽出して HITL を解決する
+    mockClient.chat.postMessage.mockReset();
+    mockClient.chat.postMessage.mockImplementation(async (args: any) => {
       if (args.blocks) {
         const actions = args.blocks.find((b: any) => b.type === "actions");
         if (actions) {
@@ -352,8 +355,10 @@ describe("handleAgentResult with HITL", () => {
       client: mockClient,
     });
 
-    // cleanText + blocks + followup = 3 calls
-    expect(hitlSay.mock.calls.length).toBeGreaterThanOrEqual(2);
+    // HITL blocks は client.chat.postMessage でDMに送信される
+    expect(mockClient.chat.postMessage).toHaveBeenCalled();
+    // cleanText + followup は say で元チャンネルに送信される
+    expect(hitlSay.mock.calls.length).toBeGreaterThanOrEqual(1);
   });
 });
 
