@@ -20,6 +20,8 @@ import { findProjectByChannel, type Project } from "./project";
 import { startHitlBridge } from "./hitl-bridge";
 import { loadBashWhitelist } from "./bash-guard";
 import { cleanExpiredSessions } from "./session";
+import { parseHandoffFromResult } from "./handoff";
+import { appendHandoffPrompt, listActivities, createActivity } from "./activity";
 
 const app = new App({
   token: config.slackBotToken,
@@ -272,10 +274,17 @@ export async function handleAgentResult(
   }) => Promise<unknown>,
   client: { chat: { postMessage: (args: Record<string, unknown>) => Promise<unknown> } },
 ) {
-  const { hitl, cleanText } = parseHitlFromResult(result);
+  // ハンドオフを先に抽出し、残りテキストからHITLを抽出
+  const { handoff, cleanText: textAfterHandoff } = parseHandoffFromResult(result);
+  const { hitl, cleanText } = parseHitlFromResult(textAfterHandoff);
 
   if (cleanText && cleanText !== "NO_ACTION") {
     await say({ text: cleanText, thread_ts: threadTs });
+  }
+
+  // ハンドオフが検出された場合: 活動記録に追記 + Slackに投稿
+  if (handoff) {
+    await processHandoff(handoff, channel, threadTs, say);
   }
 
   if (hitl) {
@@ -314,7 +323,9 @@ export async function handleAgentResultDirect(
   threadTs: string,
   client: { chat: { postMessage: (args: Record<string, unknown>) => Promise<unknown> } },
 ) {
-  const { hitl, cleanText } = parseHitlFromResult(result);
+  // ハンドオフを先に抽出し、残りテキストからHITLを抽出
+  const { handoff, cleanText: textAfterHandoff } = parseHandoffFromResult(result);
+  const { hitl, cleanText } = parseHitlFromResult(textAfterHandoff);
 
   if (cleanText && cleanText !== "NO_ACTION") {
     await client.chat.postMessage({
@@ -322,6 +333,11 @@ export async function handleAgentResultDirect(
       text: cleanText,
       thread_ts: threadTs,
     });
+  }
+
+  // ハンドオフが検出された場合: 活動記録に追記 + Slackに投稿
+  if (handoff) {
+    await processHandoffDirect(handoff, channel, threadTs, client);
   }
 
   if (hitl) {
@@ -352,6 +368,75 @@ export async function handleAgentResultDirect(
       });
     }
   }
+}
+
+// --------------------------------------------------
+// ハンドオフ処理
+// --------------------------------------------------
+
+async function saveHandoffToActivity(
+  handoff: string,
+  channel: string,
+): Promise<void> {
+  const project = await findProjectByChannel(channel);
+  if (!project) {
+    console.warn("[handoff] プロジェクトが見つかりません:", channel);
+    return;
+  }
+
+  // investigating状態の活動記録を探す
+  const activities = await listActivities(project.slug, { status: "investigating" });
+  let filename: string;
+
+  if (activities.length > 0) {
+    // 最新のinvestigating活動記録に追記
+    filename = activities[0].filename;
+  } else {
+    // なければ新規作成
+    const titleMatch = handoff.match(/^#\s+タスク:\s*(.+)$/m);
+    const trigger = titleMatch ? titleMatch[1].trim() : "ハンドオフプロンプト";
+    const activity = await createActivity(project.slug, { trigger });
+    const activityFiles = await listActivities(project.slug, { status: "investigating" });
+    filename = activityFiles[0]?.filename;
+    if (!filename) {
+      console.error("[handoff] 活動記録の作成に失敗");
+      return;
+    }
+  }
+
+  const ok = await appendHandoffPrompt(project.slug, filename, handoff);
+  if (ok) {
+    console.log(`[handoff] 活動記録に追記: ${filename}`);
+  } else {
+    console.error(`[handoff] 追記に失敗: ${filename}`);
+  }
+}
+
+async function processHandoff(
+  handoff: string,
+  channel: string,
+  threadTs: string,
+  say: (args: { text: string; thread_ts: string }) => Promise<unknown>,
+): Promise<void> {
+  await saveHandoffToActivity(handoff, channel);
+  await say({
+    text: `*ハンドオフプロンプト*\n以下をCursor/Claude Desktopにコピーして実行してください:\n\n\`\`\`\n${handoff}\n\`\`\``,
+    thread_ts: threadTs,
+  });
+}
+
+async function processHandoffDirect(
+  handoff: string,
+  channel: string,
+  threadTs: string,
+  client: { chat: { postMessage: (args: Record<string, unknown>) => Promise<unknown> } },
+): Promise<void> {
+  await saveHandoffToActivity(handoff, channel);
+  await client.chat.postMessage({
+    channel,
+    text: `*ハンドオフプロンプト*\n以下をCursor/Claude Desktopにコピーして実行してください:\n\n\`\`\`\n${handoff}\n\`\`\``,
+    thread_ts: threadTs,
+  });
 }
 
 // --------------------------------------------------

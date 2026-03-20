@@ -218,6 +218,15 @@ export async function updateActivityStatus(
   }
 }
 
+export async function appendHandoffPrompt(
+  projectSlug: string,
+  filename: string,
+  handoffMarkdown: string,
+): Promise<boolean> {
+  const block = `\n### ハンドオフプロンプト\n\n\`\`\`markdown\n${handoffMarkdown}\n\`\`\`\n`;
+  return appendToActivity(projectSlug, filename, "成果", block);
+}
+
 export async function listActivities(
   projectSlug: string,
   filter?: { status?: ActivityStatus },
