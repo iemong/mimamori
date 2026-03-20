@@ -1,9 +1,8 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
 import { resolve } from "node:path";
+import { getSession, saveSession, deleteSession } from "./session";
 
 const PROJECT_ROOT = resolve(import.meta.dir, "..");
-
-const sessionMap = new Map<string, string>();
 
 /**
  * Claude Agent SDKにプロンプトを送信し、結果を返す
@@ -16,7 +15,7 @@ export async function askAgent(
   let resultText = "";
 
   try {
-    const existingSession = sessionMap.get(contextKey);
+    const existingSession = await getSession(contextKey);
 
     for await (const msg of query({
       prompt,
@@ -29,9 +28,8 @@ export async function askAgent(
           "Read",
           "Glob",
           "Grep",
-          "mcp__notion__*",
           "mcp__github__*",
-          "mcp__aipm_bash__*",
+          "mcp__mimamori_bash__*",
         ],
         disallowedTools: ["Edit", "Write", "Bash"],
         permissionMode: "bypassPermissions",
@@ -39,7 +37,7 @@ export async function askAgent(
       },
     })) {
       if ("session_id" in msg) {
-        sessionMap.set(contextKey, msg.session_id as string);
+        await saveSession(contextKey, msg.session_id as string);
       }
       if ("result" in msg) {
         resultText = msg.result as string;
@@ -56,6 +54,6 @@ export async function askAgent(
 /**
  * セッションをクリアする
  */
-export function clearSession(contextKey: string): void {
-  sessionMap.delete(contextKey);
+export async function clearSession(contextKey: string): Promise<void> {
+  await deleteSession(contextKey);
 }

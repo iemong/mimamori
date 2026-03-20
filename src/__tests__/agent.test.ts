@@ -53,14 +53,14 @@ describe("askAgent", () => {
     expect(await askAgent("x", "c-err")).toContain("エラー");
   });
 
-  test("allowedToolsにNotion/GitHub", async () => {
+  test("allowedToolsにGitHub/BashGuard", async () => {
     mockQuery.mockImplementation(async function* () {
       yield { result: "ok" };
     });
     await askAgent("x", "c-tools");
     const tools = mockQuery.mock.calls[0][0].options.allowedTools;
-    expect(tools).toContain("mcp__notion__*");
     expect(tools).toContain("mcp__github__*");
+    expect(tools).toContain("mcp__mimamori_bash__*");
   });
 
   test("Edit/WriteはdisallowedTools", async () => {

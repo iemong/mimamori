@@ -1,6 +1,7 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
 import { resolve } from "node:path";
 import { getGuardConfig } from "./rules";
+import { logGuardDecision } from "./guard-log";
 
 const PROJECT_ROOT = resolve(import.meta.dir, "..");
 
@@ -13,7 +14,10 @@ const DEFAULT_PROMPT =
  * Haiku でメッセージを事前判定する（Claude Agent SDK 経由）。
  * maxTurns: 1、ツールなしで軽量に実行。
  */
-export async function shouldProcess(message: string): Promise<boolean> {
+export async function shouldProcess(
+  message: string,
+  channelId?: string,
+): Promise<boolean> {
   const { model, prompt } = getGuardConfig();
 
   try {
@@ -36,6 +40,10 @@ export async function shouldProcess(message: string): Promise<boolean> {
     }
 
     const pass = resultText.trim().toUpperCase().startsWith("Y");
+    const decision = pass ? "Y" : "N";
+
+    await logGuardDecision(decision, message, channelId);
+
     if (!pass) {
       console.log(`[guard] スキップ: "${message.slice(0, 50)}..."`);
     }

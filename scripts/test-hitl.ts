@@ -55,7 +55,7 @@ const testCases: { name: string; hitl: HitlRequest }[] = [
 async function main() {
   console.log("");
   console.log("=================================");
-  console.log("  AIPM HITL テスト");
+  console.log("  Mimamori HITL テスト");
   console.log("=================================");
   console.log("");
   console.log("  Slack上でHITLボタン→回答のラウンドトリップを検証します。");

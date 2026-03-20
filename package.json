@@ -1,7 +1,7 @@
 {
-  "name": "aipm",
+  "name": "mimamori",
   "version": "0.1.0",
-  "description": "AI Personal Project Manager - Slack bot powered by Claude Agent SDK",
+  "description": "Mimamori（見守り）- Slack ambient agent powered by Claude Agent SDK",
   "type": "module",
   "scripts": {
     "dev": "bun run src/index.ts",

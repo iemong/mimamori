@@ -1,6 +1,6 @@
-# AIPM - AI Personal Project Manager
+# Mimamori（見守り）- Slack Ambient Agent
 
-Slack を通じてプロジェクト管理を支援する AI パーソナル PM。Claude Agent SDK + Slack Bolt で構築。
+Slack を通じてプロジェクトを見守る ambient agent。Claude Agent SDK + Slack Bolt で構築。
 
 ## セットアップ
 
@@ -11,7 +11,6 @@ bun run setup
 
 セットアップウィザードで以下を設定:
 - Slack Bot Token / App Token / Signing Secret
-- Notion CLI (`ntn auth login`)
 - GitHub CLI (`gh auth login`)
 - Sentry CLI (`sentry auth login`)
 - HITL 承認チャンネル（Bash Guard 用）
@@ -21,7 +20,7 @@ bun run setup
 
 | コマンド | 説明 |
 |---------|------|
-| `bun run dev` | AIPM 起動 |
+| `bun run dev` | Mimamori 起動 |
 | `bun run setup` | 初回セットアップ |
 | `bun run project:create` | プロジェクトを対話式に作成 |
 | `bun run project:list` | プロジェクト一覧 |
@@ -74,6 +73,10 @@ Agent → execute_command("git log -5")
 | `src/agent.ts` | Claude Agent SDK ラッパー |
 | `src/project.ts` | プロジェクト設定スキーマ + ローダー |
 | `src/knowledge.ts` | ADR 保存・検索（プロジェクトスコープ対応） |
+| `src/task.ts` | タスク管理（teamId別、ローカルMarkdown） |
+| `src/session.ts` | セッション永続化（ファイルベース） |
+| `src/guard.ts` | メッセージガード（LLM判定） |
+| `src/guard-log.ts` | guard判定ログ |
 | `src/hitl.ts` | HITL パース・ブロック生成 |
 | `src/hitl-bridge.ts` | Bash Guard 用 HTTP HITL ブリッジ |
 | `src/bash-guard.ts` | Bash ホワイトリスト管理 |
@@ -89,4 +92,4 @@ Agent → execute_command("git log -5")
 | `SLACK_APP_TOKEN` | Slack App-Level Token (xapp-) |
 | `SLACK_SIGNING_SECRET` | Slack Signing Secret |
 | `SLACK_HITL_CHANNEL` | Bash Guard HITL 承認先（チャンネルID `C...` またはユーザーID `U...` でDM） |
-| `AIPM_HITL_BRIDGE_PORT` | HITL Bridge ポート (default: 3456) |
+| `MIMAMORI_HITL_BRIDGE_PORT` | HITL Bridge ポート (default: 3456) |

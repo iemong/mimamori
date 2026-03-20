@@ -1,17 +1,15 @@
 import { readdir, readFile, writeFile, mkdir } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
 import { findProjectByChannel, getProjectKnowledgeDir } from "./project";
-
-export const KNOWLEDGE_DIR =
-  process.env.AIPM_KNOWLEDGE_DIR ||
-  resolve(import.meta.dir, "..", "knowledge");
 
 async function resolveKnowledgeDir(channelId: string): Promise<string> {
   const project = await findProjectByChannel(channelId);
-  if (project) {
-    return getProjectKnowledgeDir(project.slug);
+  if (!project) {
+    throw new Error(
+      `チャンネル ${channelId} に紐づくプロジェクトが見つかりません。bun run project:create で作成してください。`,
+    );
   }
-  return join(KNOWLEDGE_DIR, channelId);
+  return getProjectKnowledgeDir(project.slug);
 }
 
 export async function saveDecision(

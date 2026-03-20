@@ -22,6 +22,6 @@ export const config = {
     return process.env.SLACK_HITL_CHANNEL || "";
   },
   get hitlBridgePort() {
-    return parseInt(process.env.AIPM_HITL_BRIDGE_PORT || "3456", 10);
+    return parseInt(process.env.MIMAMORI_HITL_BRIDGE_PORT || "3456", 10);
   },
 };

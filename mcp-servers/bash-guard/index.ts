@@ -1,6 +1,6 @@
 import { loadBashWhitelist, isWhitelisted } from "../../src/bash-guard";
 
-const HITL_BRIDGE_PORT = process.env.AIPM_HITL_BRIDGE_PORT || "3456";
+const HITL_BRIDGE_PORT = process.env.MIMAMORI_HITL_BRIDGE_PORT || "3456";
 const HITL_BRIDGE_URL = `http://localhost:${HITL_BRIDGE_PORT}`;
 
 // --------------------------------------------------
@@ -113,7 +113,7 @@ async function handleMessage(msg: {
       sendResult(msg.id!, {
         protocolVersion: "2024-11-05",
         capabilities: { tools: {} },
-        serverInfo: { name: "aipm-bash-guard", version: "0.1.0" },
+        serverInfo: { name: "mimamori-bash-guard", version: "0.1.0" },
       });
       break;
 

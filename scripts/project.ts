@@ -24,7 +24,7 @@ function toSlug(name: string): string {
 async function create() {
   console.log("");
   console.log("=================================");
-  console.log("  AIPM Project Setup");
+  console.log("  Mimamori Project Setup");
   console.log("=================================");
   console.log("");
 
@@ -78,14 +78,50 @@ async function create() {
     github = { owner, repo };
   }
 
-  // ---- Step 4: Notion ----
+  // ---- Step 4: Resources ----
   console.log("");
-  console.log("[Step 4/4] Notion (optional)");
-  const notionDbId = await ask("  Database ID (Enterでスキップ): ");
-  let notion: { databaseId: string } | undefined;
-  if (notionDbId) {
-    notion = { databaseId: notionDbId };
+  console.log("[Step 4/4] Resources (optional)");
+  console.log("  チャンネル専用のローカルディレクトリや外部リンクを設定します。");
+
+  const directories: { path: string; label: string; description?: string }[] = [];
+  let addMoreDirs = true;
+  while (addMoreDirs) {
+    const dirPath = await ask("  ディレクトリパス (Enterでスキップ): ");
+    if (!dirPath) {
+      addMoreDirs = false;
+    } else {
+      const dirLabel = await ask("  ラベル (例: メインリポジトリ): ", dirPath);
+      const dirDesc = await ask("  説明 (optional): ");
+      directories.push({
+        path: dirPath,
+        label: dirLabel,
+        ...(dirDesc ? { description: dirDesc } : {}),
+      });
+      console.log(`    追加: ${dirLabel} -> ${dirPath}`);
+    }
   }
+
+  const links: { url: string; label: string; description?: string }[] = [];
+  let addMoreLinks = true;
+  while (addMoreLinks) {
+    const linkUrl = await ask("  外部リンクURL (Enterでスキップ): ");
+    if (!linkUrl) {
+      addMoreLinks = false;
+    } else {
+      const linkLabel = await ask("  ラベル (例: Sentryダッシュボード): ", linkUrl);
+      const linkDesc = await ask("  説明 (optional): ");
+      links.push({
+        url: linkUrl,
+        label: linkLabel,
+        ...(linkDesc ? { description: linkDesc } : {}),
+      });
+      console.log(`    追加: ${linkLabel} -> ${linkUrl}`);
+    }
+  }
+
+  const instructions = await ask("  チャンネル固有の指示 (Enterでスキップ): ");
+
+  const hasResources = directories.length > 0 || links.length > 0 || instructions;
 
   // ---- Generate files ----
   const projectsDir = getProjectsDir();
@@ -110,9 +146,27 @@ async function create() {
     configLines.push(`    repo: "${github.repo}",`);
     configLines.push(`  },`);
   }
-  if (notion) {
-    configLines.push(`  notion: {`);
-    configLines.push(`    databaseId: "${notion.databaseId}",`);
+  if (hasResources) {
+    configLines.push(`  resources: {`);
+    if (directories.length > 0) {
+      configLines.push(`    directories: [`);
+      for (const dir of directories) {
+        const descPart = dir.description ? `, description: "${dir.description}"` : "";
+        configLines.push(`      { path: "${dir.path}", label: "${dir.label}"${descPart} },`);
+      }
+      configLines.push(`    ],`);
+    }
+    if (links.length > 0) {
+      configLines.push(`    links: [`);
+      for (const link of links) {
+        const descPart = link.description ? `, description: "${link.description}"` : "";
+        configLines.push(`      { url: "${link.url}", label: "${link.label}"${descPart} },`);
+      }
+      configLines.push(`    ],`);
+    }
+    if (instructions) {
+      configLines.push(`    instructions: "${instructions}",`);
+    }
     configLines.push(`  },`);
   }
   configLines.push(`  createdAt: "${new Date().toISOString()}",`);
@@ -171,10 +225,20 @@ async function list() {
       console.log(
         `    GitHub:  ${p.config.github.owner}/${p.config.github.repo}`,
       );
-    if (p.config.notion)
-      console.log(`    Notion:  ${p.config.notion.databaseId}`);
     if (p.config.description)
       console.log(`    ${p.config.description}`);
+    if (p.config.resources) {
+      const res = p.config.resources;
+      if (res.directories.length > 0) {
+        console.log(`    Dirs:    ${res.directories.map((d) => d.label).join(", ")}`);
+      }
+      if (res.links.length > 0) {
+        console.log(`    Links:   ${res.links.map((l) => l.label).join(", ")}`);
+      }
+      if (res.instructions) {
+        console.log(`    指示:    ${res.instructions.slice(0, 60)}${res.instructions.length > 60 ? "..." : ""}`);
+      }
+    }
     console.log("");
   }
 }

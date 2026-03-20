@@ -1,15 +1,9 @@
 import { mock } from "bun:test";
-import { mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 
 // -- Env vars (before any module loads) --
 process.env.SLACK_BOT_TOKEN = "xoxb-test";
 process.env.SLACK_APP_TOKEN = "xapp-test";
 process.env.SLACK_SIGNING_SECRET = "secret-test";
-process.env.AIPM_KNOWLEDGE_DIR = mkdtempSync(
-  join(tmpdir(), "aipm-test-"),
-);
 
 // -- Mock @slack/bolt --
 const eventHandlers = new Map<string, Function>();

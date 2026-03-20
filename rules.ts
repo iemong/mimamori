@@ -16,17 +16,17 @@ const rules = {
     //   name: "#example-tasks",
     //   on_message: {
     //     guard: true,
-    //     prompt: "チャンネルの投稿を分析し、必要に応じてNotionにタスク登録やメモを行ってください。",
+    //     prompt: "チャンネルの投稿を分析し、必要に応じてナレッジに記録してください。",
     //   },
     //   on_reaction: {
     //     memo: {
-    //       prompt: "この投稿をNotionにタスクとして登録してください。",
+    //       prompt: "この投稿をナレッジに記録してください。",
     //     },
     //     clipboard: {
-    //       prompt: "この投稿の内容をNotionにメモとして記録してください。",
+    //       prompt: "この投稿の内容をメモとしてナレッジに記録してください。",
     //     },
     //     white_check_mark: {
-    //       prompt: "この投稿に関連するNotionタスクを完了にしてください。",
+    //       prompt: "この投稿に関連する対応が完了したことを記録してください。",
     //     },
     //   },
     // },
@@ -36,10 +36,10 @@ const rules = {
       on_message: {
         guard: true,
         prompt:
-          "投稿を分析し、必要に応じてNotionにタスク登録してください。",
+          "投稿を分析し、必要に応じてナレッジに記録してください。",
       },
       on_reaction: {
-        memo: { prompt: "Notionにタスクとして登録してください。" },
+        memo: { prompt: "ナレッジに記録してください。" },
       },
     },
   },

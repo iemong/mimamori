@@ -11,54 +11,69 @@ async function ask(prompt: string, fallback = ""): Promise<string> {
   return answer.trim() || fallback;
 }
 
+async function askRequired(prompt: string): Promise<string> {
+  while (true) {
+    const answer = await rl.question(prompt);
+    const trimmed = answer.trim();
+    if (trimmed) return trimmed;
+    console.log("  ⚠ この項目は必須です。値を入力してください。");
+  }
+}
+
+async function askYesNo(prompt: string): Promise<boolean> {
+  const answer = await rl.question(prompt);
+  return answer.trim().toLowerCase() !== "n";
+}
+
 async function main() {
   console.log("");
   console.log("=================================");
-  console.log("  AIPM Setup Wizard");
+  console.log("  Mimamori Setup Wizard");
   console.log("=================================");
   console.log("");
 
-  // ---- Step 1: Slack ----
-  console.log("[Step 1/5] Slack");
+  // ---- Step 1: Slack (必須) ----
+  console.log("[Step 1/4] Slack (必須)");
   console.log("  Slack App を Socket Mode で作成し、以下のスコープを付与してください:");
   console.log("  Bot scopes: app_mentions:read, channels:history, channels:read,");
   console.log("              chat:write, reactions:read, users:read");
   console.log("  Event subscriptions: app_mention, message.channels, reaction_added");
   console.log("");
-  const slackBotToken = await ask("  Bot Token (xoxb-...): ");
-  const slackAppToken = await ask("  App-Level Token (xapp-...): ");
-  const slackSigningSecret = await ask("  Signing Secret: ");
+  const slackBotToken = await askRequired("  Bot Token (xoxb-...): ");
+  const slackAppToken = await askRequired("  App-Level Token (xapp-...): ");
+  const slackSigningSecret = await askRequired("  Signing Secret: ");
 
-  // ---- Step 2: Notion ----
+  // ---- Step 2: GitHub (オプション) ----
   console.log("");
-  console.log("[Step 2/5] Notion");
-  console.log("  Notion CLI を使って MCP サーバーを起動します。");
-  console.log("  未インストールの場合: npm i -g ntn@latest");
-  console.log("  認証: ntn auth login");
-  console.log("");
-  await ask("  上記を完了したら Enter を押してください: ");
-
-  // ---- Step 3: GitHub ----
-  console.log("");
-  console.log("[Step 3/5] GitHub");
-  console.log("  GitHub CLI を使って連携します。");
+  console.log("[Step 2/4] GitHub (オプション)");
+  console.log("  GitHub CLI を使ってIssue・PR連携ができます。");
   console.log("  未インストールの場合: brew install gh");
   console.log("  認証: gh auth login");
   console.log("");
-  await ask("  上記を完了したら Enter を押してください: ");
+  const setupGitHub = await askYesNo("  GitHubを設定しますか? (Y/n): ");
+  if (setupGitHub) {
+    await ask("  gh auth login を完了したら Enter を押してください: ");
+  } else {
+    console.log("  -> スキップしました（後から gh auth login で設定できます）");
+  }
 
-  // ---- Step 3: Sentry ----
+  // ---- Step 3: Sentry (オプション) ----
   console.log("");
-  console.log("[Step 4/5] Sentry");
-  console.log("  Sentry CLI を使ってエラー監視と連携します。");
-  console.log("  未インストールの場合: npm install -g sentry");
-  console.log("  認証: sentry auth login");
+  console.log("[Step 3/4] Sentry (オプション)");
+  console.log("  Sentry CLI を使ってエラー監視と連携できます。");
+  console.log("  未インストールの場合: bun install -g @sentry/cli");
+  console.log("  認証: sentry-cli login");
   console.log("");
-  await ask("  上記を完了したら Enter を押してください: ");
+  const setupSentry = await askYesNo("  Sentryを設定しますか? (Y/n): ");
+  if (setupSentry) {
+    await ask("  sentry-cli login を完了したら Enter を押してください: ");
+  } else {
+    console.log("  -> スキップしました（後から sentry-cli login で設定できます）");
+  }
 
   // ---- Step 4: Persona ----
   console.log("");
-  console.log("[Step 5/5] Persona");
+  console.log("[Step 4/4] Persona");
   const personaName = await ask("  名前 (default: AI PM): ", "AI PM");
   const personaRole = await ask(
     "  役割 (default: パーソナルプロジェクトマネージャー): ",
@@ -105,11 +120,7 @@ async function main() {
   // ---- Write .mcp.json ----
   const mcpConfig = {
     mcpServers: {
-      notion: {
-        command: "ntn",
-        args: ["mcp"],
-      },
-      aipm_bash: {
+      mimamori_bash: {
         command: "bun",
         args: ["run", "mcp-servers/bash-guard/index.ts"],
       },
@@ -140,10 +151,10 @@ const rules = {
     //   name: "#tasks",
     //   on_message: {
     //     guard: true,
-    //     prompt: "投稿を分析し、必要に応じてNotionにタスク登録してください。",
+    //     prompt: "投稿を分析し、必要に応じてナレッジに記録してください。",
     //   },
     //   on_reaction: {
-    //     memo: { prompt: "Notionにタスクとして登録してください。" },
+    //     memo: { prompt: "ナレッジに記録してください。" },
     //   },
     // },
   },
@@ -230,12 +241,16 @@ export default rules;
   console.log("=================================");
   console.log("");
   console.log("  次のステップ:");
-  console.log("  1. rules.ts にチャンネルルールを追加");
-  console.log("  2. gh auth login (未実施の場合)");
-  console.log("  3. ntn auth login (未実施の場合)");
-  console.log("  4. sentry auth login (未実施の場合)");
-  console.log("  5. bun run test:hitl  (HITL動作確認)");
-  console.log("  6. bun run dev");
+  let step = 1;
+  console.log(`  ${step++}. rules.ts にチャンネルルールを追加`);
+  if (!setupGitHub) {
+    console.log(`  ${step++}. gh auth login (GitHub連携する場合)`);
+  }
+  if (!setupSentry) {
+    console.log(`  ${step++}. sentry-cli login (Sentry連携する場合)`);
+  }
+  console.log(`  ${step++}. bun run test:hitl  (HITL動作確認)`);
+  console.log(`  ${step++}. bun run dev`);
   console.log("");
 
   rl.close();

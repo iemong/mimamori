@@ -19,6 +19,7 @@ import { shouldProcess } from "./guard";
 import { findProjectByChannel, type Project } from "./project";
 import { startHitlBridge } from "./hitl-bridge";
 import { loadBashWhitelist } from "./bash-guard";
+import { cleanExpiredSessions } from "./session";
 
 const app = new App({
   token: config.slackBotToken,
@@ -43,8 +44,31 @@ function buildProjectContext(project: Project): string {
     lines.push(
       `  GitHub: ${project.config.github.owner}/${project.config.github.repo}`,
     );
-  if (project.config.notion)
-    lines.push(`  Notion DB: ${project.config.notion.databaseId}`);
+  const res = project.config.resources;
+  if (res) {
+    if (res.directories.length > 0) {
+      lines.push("  参照ディレクトリ:");
+      for (const dir of res.directories) {
+        lines.push(
+          `    - ${dir.label}: ${dir.path}${dir.description ? ` — ${dir.description}` : ""}`,
+        );
+      }
+    }
+    if (res.links.length > 0) {
+      lines.push("  参照リンク:");
+      for (const link of res.links) {
+        lines.push(
+          `    - ${link.label}: ${link.url}${link.description ? ` — ${link.description}` : ""}`,
+        );
+      }
+    }
+    if (res.instructions) {
+      lines.push("");
+      lines.push(`[チャンネル固有の指示]`);
+      lines.push(res.instructions);
+    }
+  }
+
   return lines.join("\n");
 }
 
@@ -53,13 +77,14 @@ function buildProjectContext(project: Project): string {
 // --------------------------------------------------
 app.event("app_mention", async ({ event, say, client }) => {
   const threadTs = event.thread_ts || event.ts;
+  const teamId = "team" in event ? (event.team as string) : undefined;
   const contextKey = `${event.channel}-${threadTs}`;
 
   const userInfo = await client.users.info({ user: event.user });
   const userName =
     userInfo.user?.real_name || userInfo.user?.name || "unknown";
 
-  const project = await findProjectByChannel(event.channel);
+  const project = await findProjectByChannel(event.channel, teamId);
   const promptParts = [];
   if (project) promptParts.push(buildProjectContext(project));
   promptParts.push(`[Slack] ${userName} からのメンション:`);
@@ -82,7 +107,7 @@ app.event("reaction_added", async ({ event, client }) => {
   if (rule.guard) {
     const original = await fetchOriginalMessage(client, channelId, event.item.ts);
     if (!original) return;
-    if (!(await shouldProcess(original))) return;
+    if (!(await shouldProcess(original, channelId))) return;
   }
 
   const message = await fetchOriginalMessage(client, channelId, event.item.ts);
@@ -124,7 +149,7 @@ app.message(async ({ message, say, client }) => {
 
   // ガードチェック
   if (rule.guard) {
-    if (!(await shouldProcess(message.text))) return;
+    if (!(await shouldProcess(message.text, message.channel))) return;
   }
 
   const contextKey = `${message.channel}-${message.ts}`;
@@ -334,6 +359,7 @@ export async function start() {
   ).length;
 
   await loadBashWhitelist();
+  await cleanExpiredSessions();
 
   await app.start();
 
@@ -347,7 +373,7 @@ export async function start() {
     );
   }
 
-  console.log("AIPM is running!");
+  console.log("Mimamori is running!");
   console.log(`  Channels configured: ${channelCount}`);
   console.log(`  Guard model: ${rules.guard?.model || "(disabled)"}`);
   console.log(`  HITL channel: ${hitlChannel || "(disabled)"}`);
