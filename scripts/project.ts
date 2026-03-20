@@ -29,7 +29,7 @@ async function create() {
   console.log("");
 
   // ---- Step 1: Basic Info ----
-  console.log("[Step 1/4] Basic Info");
+  console.log("[Step 1/5] Basic Info");
   const name = await ask("  プロジェクト名: ");
   if (!name) {
     console.error("  プロジェクト名は必須です。");
@@ -41,7 +41,7 @@ async function create() {
 
   // ---- Step 2: Slack Channel ----
   console.log("");
-  console.log("[Step 2/4] Slack Channel");
+  console.log("[Step 2/5] Slack Channel");
   const channelId = await ask("  チャンネルID (C...): ");
   if (!channelId) {
     console.error("  チャンネルIDは必須です。");
@@ -66,7 +66,7 @@ async function create() {
 
   // ---- Step 3: GitHub ----
   console.log("");
-  console.log("[Step 3/4] GitHub (optional)");
+  console.log("[Step 3/5] GitHub (optional)");
   const githubInput = await ask("  リポジトリ (owner/repo, Enterでスキップ): ");
   let github: { owner: string; repo: string } | undefined;
   if (githubInput && githubInput.includes("/")) {
@@ -76,7 +76,7 @@ async function create() {
 
   // ---- Step 4: Resources ----
   console.log("");
-  console.log("[Step 4/4] Resources (optional)");
+  console.log("[Step 4/5] Resources (optional)");
   console.log("  チャンネル専用のローカルディレクトリや外部リンクを設定します。");
 
   const directories: { path: string; label: string; description?: string }[] = [];
@@ -118,6 +118,12 @@ async function create() {
   const instructions = await ask("  チャンネル固有の指示 (Enterでスキップ): ");
 
   const hasResources = directories.length > 0 || links.length > 0 || instructions;
+
+  // ---- Step 5: Features ----
+  console.log("");
+  console.log("[Step 5/5] Features (optional)");
+  const notesInput = await ask("  Notes機能（タスク・メモ管理）を有効にしますか？ (y/N): ");
+  const notesEnabled = notesInput.toLowerCase() === "y";
 
   // ---- Generate files ----
   const projectsDir = getProjectsDir();
@@ -165,6 +171,11 @@ async function create() {
     }
     configLines.push(`  },`);
   }
+  if (notesEnabled) {
+    configLines.push(`  features: {`);
+    configLines.push(`    notes: true,`);
+    configLines.push(`  },`);
+  }
   configLines.push(`  createdAt: "${new Date().toISOString()}",`);
   configLines.push(`} as const satisfies ProjectConfig;`);
   configLines.push("");
@@ -174,9 +185,16 @@ async function create() {
   await writeFile(join(projectDir, "project.ts"), configLines.join("\n"));
   await writeFile(join(knowledgeDir, ".gitkeep"), "");
 
+  if (notesEnabled) {
+    const notesDir = join(projectDir, "notes");
+    await mkdir(notesDir, { recursive: true });
+    await writeFile(join(notesDir, ".gitkeep"), "");
+  }
+
   console.log("");
   console.log(`  -> ${projectDir}/project.ts を作成しました`);
   console.log(`  -> ${projectDir}/knowledge/ を作成しました`);
+  if (notesEnabled) console.log(`  -> ${projectDir}/notes/ を作成しました`);
 
   // ---- Next steps ----
   console.log("");
@@ -186,7 +204,17 @@ async function create() {
   const ruleName = channelName || `#${slug}`;
   console.log(`    "${channelId}": {`);
   console.log(`      name: "${ruleName}",`);
-  console.log(`      // on_message: { prompt: "..." },`);
+  if (notesEnabled) {
+    console.log(`      on_message: {`);
+    console.log(`        pattern: "^:memo:\\\\s",`);
+    console.log(`        guard: false,`);
+    console.log(
+      `        prompt: ":memo: に続くテキストを分析してください。タスクなら TASK: {内容} 、メモなら MEMO: {内容} の形式で返してください。",`,
+    );
+    console.log(`      },`);
+  } else {
+    console.log(`      // on_message: { prompt: "..." },`);
+  }
   console.log(`      // on_reaction: { memo: { prompt: "..." } },`);
   console.log(`    },`);
   console.log("");
